@@ -1,37 +1,25 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import Sidebar from "../components/sidebar";
+import ChatHeader from "../components/chatHeader";
+import MessageList from "../components/messageList";
+import MessageInput from "../components/messageInput";
 import { Box } from "@mui/material";
-import Sidebar from "./components/sidebar";
-import ChatHeader from "./components/chatHeader";
-import MessageList from "./components/messageList";
-import MessageInput from "./components/messageInput";
 
-export default function App() {
-  const [darkMode, setDarkMode] = useState(false);
+export default function ChatPage({ username, darkMode, setDarkMode }) {
   const [messages, setMessages] = useState([]);
   const socketRef = useRef(null);
 
-  // Hardcoded username
-  const username = "Ali";
-
   useEffect(() => {
-    // Use your computer's LAN IP instead of 127.0.0.1 for multiple devices
+    // Replace with your LAN IP
     socketRef.current = new WebSocket(`ws://192.168.x.x:8001/ws/chat/${username}/`);
-
-    socketRef.current.onopen = () => {
-      console.log("Connected to WebSocket as", username);
-    };
 
     socketRef.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       setMessages((prev) => [...prev, data]);
     };
 
-    socketRef.current.onclose = () => {
-      console.log("WebSocket disconnected");
-    };
-
     return () => socketRef.current.close();
-  }, []);
+  }, [username]);
 
   const sendMessage = (text) => {
     if (socketRef.current && text.trim()) {
