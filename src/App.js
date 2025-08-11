@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Box } from "@mui/material";
 import Sidebar from "./components/sidebar";
 import ChatHeader from "./components/chatHeader";
@@ -8,38 +8,55 @@ import MessageInput from "./components/messageInput";
 export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [messages, setMessages] = useState([]);
-  const socketRef = useRef(null);
+  const [offerSDP, setOfferSDP] = useState("");
+  const [answerSDP, setAnswerSDP] = useState("");
+  const pcRef = useRef(null);
+  const dcRef = useRef(null);
 
-  // Hardcoded username
-  const username = "Ali";
+  const logMessage = (text, fromMe = false) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), fromMe, text, time: new Date().toLocaleTimeString() },
+    ]);
+  };
 
-  useEffect(() => {
-    // Use your computer's LAN IP instead of 127.0.0.1 for multiple devices
-    socketRef.current = new WebSocket(`ws://192.168.x.x:8001/ws/chat/${username}/`);
+  const createOffer = async () => {
+    pcRef.current = new RTCPeerConnection({ iceServers: [] });
+    dcRef.current = pcRef.current.createDataChannel("chat");
+    dcRef.current.onmessage = (e) => logMessage(e.data, false);
 
-    socketRef.current.onopen = () => {
-      console.log("Connected to WebSocket as", username);
+    pcRef.current.onicecandidate = () => {
+      setOfferSDP(JSON.stringify(pcRef.current.localDescription));
     };
 
-    socketRef.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setMessages((prev) => [...prev, data]);
+    const offer = await pcRef.current.createOffer();
+    await pcRef.current.setLocalDescription(offer);
+  };
+
+  const createAnswer = async () => {
+    pcRef.current = new RTCPeerConnection({ iceServers: [] });
+    pcRef.current.ondatachannel = (e) => {
+      dcRef.current = e.channel;
+      dcRef.current.onmessage = (ev) => logMessage(ev.data, false);
     };
 
-    socketRef.current.onclose = () => {
-      console.log("WebSocket disconnected");
+    pcRef.current.onicecandidate = () => {
+      setAnswerSDP(JSON.stringify(pcRef.current.localDescription));
     };
 
-    return () => socketRef.current.close();
-  }, []);
+    await pcRef.current.setRemoteDescription(JSON.parse(offerSDP));
+    const answer = await pcRef.current.createAnswer();
+    await pcRef.current.setLocalDescription(answer);
+  };
+
+  const applyAnswer = async () => {
+    await pcRef.current.setRemoteDescription(JSON.parse(answerSDP));
+  };
 
   const sendMessage = (text) => {
-    if (socketRef.current && text.trim()) {
-      socketRef.current.send(JSON.stringify({
-        text,
-        time: new Date().toLocaleTimeString(),
-        fromMe: true
-      }));
+    if (dcRef.current?.readyState === "open") {
+      dcRef.current.send(text);
+      logMessage(text, true);
     }
   };
 
@@ -48,8 +65,18 @@ export default function App() {
       <Sidebar users={[]} darkMode={darkMode} setDarkMode={setDarkMode} />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
         <ChatHeader darkMode={darkMode} />
+
+        {/* Debug controls for manual LAN handshake */}
+        <div style={{ padding: 10, background: "#eee" }}>
+          <button onClick={createOffer}>Create Offer</button>
+          <textarea value={offerSDP} onChange={(e) => setOfferSDP(e.target.value)} placeholder="Offer SDP" style={{ width: "100%" }} />
+          <button onClick={createAnswer}>Create Answer</button>
+          <textarea value={answerSDP} onChange={(e) => setAnswerSDP(e.target.value)} placeholder="Answer SDP" style={{ width: "100%" }} />
+          <button onClick={applyAnswer}>Apply Answer</button>
+        </div>
+
         <MessageList messages={messages} darkMode={darkMode} />
-        <MessageInput onSend={sendMessage} />
+        <MessageInput sendMessage={sendMessage} />
       </Box>
     </Box>
   );
