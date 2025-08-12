@@ -1,8 +1,8 @@
 // App.js
 import React from "react";
 import { AppBar, Toolbar, Typography, CssBaseline, Box } from "@mui/material";
-import OnlineUsersSidebar from "./components/OnlineUsersSidebar";
-import WebRTCComponent from "./components/WebRTCComponent";
+import OnlineUsersSidebar from "./components/sidebar";
+import WebRTCComponent from "./webRTC/index" ;
 
 const drawerWidth = 250;
 const headerHeight = 64; // Default AppBar height in MUI
