@@ -1,40 +1,56 @@
+// OnlineUsersSidebar.jsx
 import React from "react";
 import {
-  AppBar, Toolbar, Typography, IconButton,
-  TextField, List, ListItem, ListItemAvatar,
-  ListItemText, Avatar, Divider
+  Drawer,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Avatar,
+  Typography,
+  Divider,
 } from "@mui/material";
-import { Brightness4, Brightness7 } from "@mui/icons-material";
 
-export default function Sidebar({ users, darkMode, setDarkMode }) {
+const OnlineUsersSidebar = ({ onlineUsers, drawerWidth, headerHeight }) => {
   return (
-    <div style={{ width: 280, borderRight: "1px solid #ccc", display: "flex", flexDirection: "column" }}>
-      <AppBar position="static" color="default" sx={{ bgcolor: darkMode ? "grey.800" : "grey.200" }}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>Chats</Typography>
-          <IconButton onClick={() => setDarkMode(!darkMode)}>
-            {darkMode ? <Brightness7 /> : <Brightness4 />}
-          </IconButton>
-        </Toolbar>
-      </AppBar>
-
-      <div style={{ padding: 8 }}>
-        <TextField variant="outlined" size="small" placeholder="Search" fullWidth />
+    <Drawer
+      variant="permanent"
+      anchor="left"
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        [`& .MuiDrawer-paper`]: {
+          width: drawerWidth,
+          boxSizing: "border-box",
+          mt: `${headerHeight}px`, // start below header
+          height: `calc(100% - ${headerHeight}px)`,
+        },
+      }}
+    >
+      <div style={{ padding: 16 }}>
+        <Typography variant="h6" gutterBottom>
+          Online Users
+        </Typography>
+        <Divider />
+        <List>
+          {onlineUsers.length > 0 ? (
+            onlineUsers.map((user, index) => (
+              <ListItem key={index}>
+                <ListItemAvatar>
+                  <Avatar alt={user.name} src={user.avatar} />
+                </ListItemAvatar>
+                <ListItemText primary={user.name} secondary="Online" />
+              </ListItem>
+            ))
+          ) : (
+            <Typography variant="body2" style={{ marginTop: 10 }}>
+              No users online
+            </Typography>
+          )}
+        </List>
       </div>
-
-      <List sx={{ flexGrow: 1, overflowY: "auto" }}>
-        {users.map((user) => (
-          <React.Fragment key={user.id}>
-            <ListItem button selected={user.active}>
-              <ListItemAvatar>
-                <Avatar>{user.name[0]}</Avatar>
-              </ListItemAvatar>
-              <ListItemText primary={user.name} secondary={user.status} />
-            </ListItem>
-            <Divider />
-          </React.Fragment>
-        ))}
-      </List>
-    </div>
+    </Drawer>
   );
-}
+};
+
+export default OnlineUsersSidebar;
