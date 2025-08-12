@@ -1,12 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Drawer, List, ListItem, ListItemAvatar, Avatar, ListItemText, Typography, Divider, Button } from "@mui/material";
 
 export default function App() {
   const [status, setStatus] = useState("Disconnected");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState([]);
 
   const wsRef = useRef(null);
   const pcRef = useRef(null);
@@ -14,6 +11,7 @@ export default function App() {
 
   useEffect(() => {
     connectWebSocket();
+
     return () => {
       if (wsRef.current) wsRef.current.close();
       if (pcRef.current) pcRef.current.close();
@@ -35,6 +33,7 @@ export default function App() {
 
       try {
         if (data.sdp) {
+          // Handle SDP (offer or answer)
           if (data.sdp.type === "offer") {
             await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
             const answer = await pcRef.current.createAnswer();
@@ -44,14 +43,12 @@ export default function App() {
             await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
           }
         } else if (data.candidate) {
+          // Handle ICE candidate
           try {
             await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
           } catch (e) {
             console.error("Error adding ICE candidate", e);
           }
-        } else if (data.userList) {
-          // WebSocket se user list aayi (yahan server se bhejna hoga)
-          setOnlineUsers(data.userList);
         }
       } catch (e) {
         console.error("Error handling signaling data", e);
@@ -78,6 +75,7 @@ export default function App() {
     const pc = new RTCPeerConnection({ iceServers: [] });
     pcRef.current = pc;
 
+    // Create data channel as initiator
     const dc = pc.createDataChannel("chat");
     dcRef.current = dc;
     setupDataChannel(dc);
@@ -98,12 +96,10 @@ export default function App() {
       setStatus(`Connection state: ${pc.connectionState}`);
       if (pc.connectionState === "connected") {
         setStatus("Connected to peer");
-
-        // Yahan dummy user add kiya (baad me server se real list aayegi)
-        setOnlineUsers((prev) => [...prev, { name: "Peer User", avatar: "https://i.pravatar.cc/150?img=2" }]);
       }
     };
 
+    // Create offer and send
     pc.createOffer()
       .then((offer) => pc.setLocalDescription(offer))
       .then(() => {
@@ -143,11 +139,6 @@ export default function App() {
       <h2>LAN WebRTC Chat (Automatic Signaling)</h2>
       <p><b>Status:</b> {status}</p>
 
-      <Button variant="contained" onClick={() => setSidebarOpen(true)} style={{ marginBottom: 12 }}>
-        Show Online Users
-      </Button>
-
-      {/* Chat Messages */}
       <div
         style={{
           border: "1px solid #ccc",
@@ -161,7 +152,13 @@ export default function App() {
       >
         {messages.length === 0 && <p style={{ color: "#999" }}>No messages yet.</p>}
         {messages.map((msg, i) => (
-          <div key={i} style={{ textAlign: msg.who === "Me" ? "right" : "left", marginBottom: 6 }}>
+          <div
+            key={i}
+            style={{
+              textAlign: msg.who === "Me" ? "right" : "left",
+              marginBottom: 6,
+            }}
+          >
             <span
               style={{
                 display: "inline-block",
@@ -180,7 +177,6 @@ export default function App() {
         ))}
       </div>
 
-      {/* Input Box */}
       <div style={{ display: "flex", gap: 8 }}>
         <input
           type="text"
@@ -205,30 +201,6 @@ export default function App() {
           Send
         </button>
       </div>
-
-      {/* MUI Drawer for Online Users */}
-      <Drawer anchor="left" open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-        <div style={{ width: 250, padding: 16 }}>
-          <Typography variant="h6" gutterBottom>Online Users</Typography>
-          <Divider />
-          <List>
-            {onlineUsers.length > 0 ? (
-              onlineUsers.map((user, index) => (
-                <ListItem key={index}>
-                  <ListItemAvatar>
-                    <Avatar alt={user.name} src={user.avatar} />
-                  </ListItemAvatar>
-                  <ListItemText primary={user.name} secondary="Online" />
-                </ListItem>
-              ))
-            ) : (
-              <Typography variant="body2" style={{ marginTop: 10 }}>
-                No users online
-              </Typography>
-            )}
-          </List>
-        </div>
-      </Drawer>
     </div>
   );
 }
