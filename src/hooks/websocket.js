@@ -1,17 +1,13 @@
-// src/hooks/useWebSocket.js
 import { useEffect, useRef, useState } from "react";
 
 export default function useWebSocket(username) {
   const [messages, setMessages] = useState([]);
   const wsRef = useRef(null);
 
-  // If username is empty, don't connect yet
   useEffect(() => {
     if (!username) return;
 
-    const host = process.env.REACT_APP_WS_BASE_URL;
-    const url = `ws://${host}/ws/chat/${username}/`;
-
+    const url = `ws://${process.env.REACT_APP_WS_BASE_URL}/ws/chat/${username}/`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -21,13 +17,10 @@ export default function useWebSocket(username) {
       try {
         const data = JSON.parse(event.data);
         if (data.type === "message") {
-          setMessages((prev) => [
-            ...prev,
-            { sender: data.from, text: data.message },
-          ]);
+          setMessages((prev) => [...prev, { sender: data.from, text: data.message }]);
         }
       } catch (err) {
-        console.error("Failed to parse WS message", err);
+        console.error("Error parsing WS message", err);
       }
     };
 
@@ -45,10 +38,7 @@ export default function useWebSocket(username) {
       console.warn("WebSocket is not open");
       return;
     }
-    const payload = {
-      receiver,
-      message: messageText,
-    };
+    const payload = { receiver, message: messageText };
     wsRef.current.send(JSON.stringify(payload));
   };
 
