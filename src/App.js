@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import useWebSocket from "./hooks/websocket";
+import ChatHeader from "./components/chatHeader";
 
 const drawerWidth = 250;
 const headerHeight = 64;
@@ -29,18 +30,18 @@ export default function App() {
 		5: "Sidra",
 	};
 
-	const { messages, sendMessage } = useWebSocket(username, receiver, userMap);
+	const { messages, sendMessage, deleteChat } = useWebSocket(username, receiver, userMap);
+
 
 	// handle sending message
 	const handleSend = () => {
 		if (!input.trim() && !image) return;
-	  
+
 		sendMessage(input.trim(), image);
-	  
+
 		setInput("");
 		setImage(null);
-	  };
-	  
+	};
 
 	// handle file upload
 	const handleFileUpload = (e) => {
@@ -105,6 +106,9 @@ export default function App() {
 					p: 3,
 				}}
 			>
+				{/* Chat Header */}
+				<ChatHeader receiver={receiver} onClearChat={deleteChat} />
+
 				{/* Messages */}
 				<Box
 					sx={{

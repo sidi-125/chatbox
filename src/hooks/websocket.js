@@ -5,12 +5,14 @@ export default function useWebSocket(username, receiver, userMap) {
 	const wsRef = useRef(null);
 	const messageQueue = useRef([]);
 
+  const BASE_URL = process.env.REACT_APP_WS_BASE_URL;
+
 	// Fetch latest chat history
 	const fetchHistory = useCallback(async () => {
 		if (!username || !receiver) return;
 		try {
 			const res = await fetch(
-				`https://58a9b00b5441.ngrok-free.app/chat/${username}/${receiver}/`,
+				`https://${BASE_URL}/chat/${username}/${receiver}/`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -25,7 +27,7 @@ export default function useWebSocket(username, receiver, userMap) {
 				const type = senderName === username ? "sent" : "received";
 				return {
 					sender: senderName,
-					text: msg.content || "", // use text here
+					text: msg.content || "",
 					image: msg.image || null,
 					timestamp: msg.timestamp,
 					type,
@@ -42,7 +44,7 @@ export default function useWebSocket(username, receiver, userMap) {
 	useEffect(() => {
 		if (!username || !receiver) return;
 
-		const wsUrl = `wss://58a9b00b5441.ngrok-free.app/ws/chat/${username}/`;
+		const wsUrl = `wss://${BASE_URL}/ws/chat/${username}/`;
 		const ws = new WebSocket(wsUrl);
 		wsRef.current = ws;
 
@@ -77,7 +79,6 @@ export default function useWebSocket(username, receiver, userMap) {
 			console.warn("❌ WebSocket closed. Reconnecting in 2s...");
 			setTimeout(() => {
 				if (username && receiver && !wsRef.current) {
-					// reconnect
 					wsRef.current = new WebSocket(wsUrl);
 				}
 			}, 2000);
@@ -87,7 +88,7 @@ export default function useWebSocket(username, receiver, userMap) {
 			wsRef.current = null;
 			ws.close();
 		};
-	}, [username, receiver]); // 👈 fetchHistory removed from deps!
+	}, [username, receiver]);
 
 	// Send message
 	const sendMessage = async (text = "", image = null) => {
@@ -115,5 +116,29 @@ export default function useWebSocket(username, receiver, userMap) {
 		}
 	};
 
-	return { messages, sendMessage };
+	// Delete chat
+	const deleteChat = async () => {
+    if (!username || !receiver) return;
+  
+    try {
+      const res = await fetch(
+        `https://${BASE_URL}/chat/delete/${username}/${receiver}/`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+  
+      if (!res.ok) throw new Error("Failed to delete chat");
+  
+      console.log("✅ Chat deleted successfully");
+      setMessages([]); // clear chat only for the user who deleted
+    } catch (err) {
+      console.error("❌ Error deleting chat:", err);
+    }
+  };
+
+	return { messages, sendMessage, deleteChat };
 }
