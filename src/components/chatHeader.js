@@ -1,16 +1,42 @@
-import React from "react";
-import { AppBar, Toolbar, Avatar, Typography, Box } from "@mui/material";
+// ChatHeader.jsx
+import React, { useState } from "react";
+import { Box, Typography, IconButton, Menu, MenuItem } from "@mui/material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 
-export default function ChatHeader({ darkMode }) {
+export default function ChatHeader({ receiver, onClearChat }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
+  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+
+  const handleClearChat = () => {
+    handleMenuClose();
+    if (onClearChat) onClearChat();
+  };
+
   return (
-    <AppBar position="static" color="default" sx={{ bgcolor: darkMode ? "grey.800" : "grey.200" }}>
-      <Toolbar>
-        <Avatar sx={{ mr: 2 }}>D</Avatar>
-        <Box>
-          <Typography variant="subtitle1">Demo User</Typography>
-          <Typography variant="caption" color="green">Online</Typography>
-        </Box>
-      </Toolbar>
-    </AppBar>
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        p: 2,
+        borderBottom: "1px solid #ddd",
+        bgcolor: "#fff",
+      }}
+    >
+      <Typography variant="h6">{receiver}</Typography>
+
+      <IconButton onClick={handleMenuOpen}>
+        <MoreVertIcon />
+      </IconButton>
+
+      <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+        <MenuItem onClick={handleClearChat}>Clear Chat</MenuItem>
+        {/* <MenuItem onClick={handleClearChat}>Block User</MenuItem> */}
+        {/* Add other options here if needed */}
+      </Menu>
+    </Box>
   );
 }
