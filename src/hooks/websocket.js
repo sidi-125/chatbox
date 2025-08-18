@@ -1,56 +1,119 @@
-// src/hooks/useWebSocket.js
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
-export default function useWebSocket(username) {
-  const [messages, setMessages] = useState([]);
-  const wsRef = useRef(null);
+export default function useWebSocket(username, receiver, userMap) {
+	const [messages, setMessages] = useState([]);
+	const wsRef = useRef(null);
+	const messageQueue = useRef([]);
 
-  // If username is empty, don't connect yet
-  useEffect(() => {
-    if (!username) return;
+	// Fetch latest chat history
+	const fetchHistory = useCallback(async () => {
+		if (!username || !receiver) return;
+		try {
+			const res = await fetch(
+				`https://58a9b00b5441.ngrok-free.app/chat/${username}/${receiver}/`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ username, receiver }),
+				}
+			);
+			if (!res.ok) throw new Error("Failed to fetch messages");
 
-    const host = process.env.REACT_APP_WS_BASE_URL;
-    const url = `ws://${host}/ws/chat/${username}/`;
+			const data = await res.json();
+			const filteredMessages = data.map((msg) => {
+				const senderName = userMap[msg.sender] || "unknown";
+				const type = senderName === username ? "sent" : "received";
+				return {
+					sender: senderName,
+					text: msg.content || "", // use text here
+					image: msg.image || null,
+					timestamp: msg.timestamp,
+					type,
+				};
+			});
 
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
+			setMessages(filteredMessages);
+		} catch (err) {
+			console.error("Error fetching history:", err);
+		}
+	}, [username, receiver, userMap]);
 
-    ws.onopen = () => console.log("WebSocket connected:", url);
+	// WebSocket connection
+	useEffect(() => {
+		if (!username || !receiver) return;
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "message") {
-          setMessages((prev) => [
-            ...prev,
-            { sender: data.from, text: data.message },
-          ]);
-        }
-      } catch (err) {
-        console.error("Failed to parse WS message", err);
-      }
-    };
+		const wsUrl = `wss://58a9b00b5441.ngrok-free.app/ws/chat/${username}/`;
+		const ws = new WebSocket(wsUrl);
+		wsRef.current = ws;
 
-    ws.onerror = (err) => console.error("WebSocket error", err);
+		ws.onopen = () => {
+			console.log("✅ WebSocket connected");
+			// flush queued messages
+			messageQueue.current.forEach((msg) => ws.send(JSON.stringify(msg)));
+			messageQueue.current = [];
+			fetchHistory(); // only once on connect
+		};
 
-    ws.onclose = () => console.log("WebSocket closed");
+		ws.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				console.log("WS received:", data);
 
-    return () => {
-      ws.close();
-    };
-  }, [username]);
+				const incomingMessage = {
+					sender: data.from || "Unknown",
+					text: data.message?.trim() || "",
+					image: data.image || null,
+					timestamp: data.timestamp || new Date().toISOString(),
+					type: data.from === username ? "sent" : "received",
+				};
 
-  const sendMessage = (messageText, receiver) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.warn("WebSocket is not open");
-      return;
-    }
-    const payload = {
-      receiver,
-      message: messageText,
-    };
-    wsRef.current.send(JSON.stringify(payload));
-  };
+				setMessages((prev) => [...prev, incomingMessage]);
+			} catch (err) {
+				console.error("Error parsing WS message", err);
+			}
+		};
 
-  return { messages, sendMessage };
+		ws.onclose = () => {
+			console.warn("❌ WebSocket closed. Reconnecting in 2s...");
+			setTimeout(() => {
+				if (username && receiver && !wsRef.current) {
+					// reconnect
+					wsRef.current = new WebSocket(wsUrl);
+				}
+			}, 2000);
+		};
+
+		return () => {
+			wsRef.current = null;
+			ws.close();
+		};
+	}, [username, receiver]); // 👈 fetchHistory removed from deps!
+
+	// Send message
+	const sendMessage = async (text = "", image = null) => {
+		const payload = {
+			receiver,
+			message: text || " ",
+			image: image || null,
+		};
+
+		setMessages((prev) => [
+			...prev,
+			{
+				sender: username,
+				text: text || "",
+				image,
+				timestamp: new Date().toISOString(),
+				type: "sent",
+			},
+		]);
+
+		if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+			wsRef.current.send(JSON.stringify(payload));
+		} else {
+			messageQueue.current.push(payload);
+		}
+	};
+
+	return { messages, sendMessage };
 }
