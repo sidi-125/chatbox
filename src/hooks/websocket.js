@@ -5,7 +5,7 @@ export default function useWebSocket(username, receiver, userMap) {
 	const wsRef = useRef(null);
 	const messageQueue = useRef([]);
 
-  const BASE_URL = process.env.REACT_APP_WS_BASE_URL;
+	const BASE_URL = process.env.REACT_APP_WS_BASE_URL;
 
 	// Fetch latest chat history
 	const fetchHistory = useCallback(async () => {
@@ -49,7 +49,7 @@ export default function useWebSocket(username, receiver, userMap) {
 		wsRef.current = ws;
 
 		ws.onopen = () => {
-			console.log("✅ WebSocket connected");
+			console.log("WebSocket connected");
 			// flush queued messages
 			messageQueue.current.forEach((msg) => ws.send(JSON.stringify(msg)));
 			messageQueue.current = [];
@@ -63,7 +63,7 @@ export default function useWebSocket(username, receiver, userMap) {
 
 				const incomingMessage = {
 					sender: data.from || "Unknown",
-					text: data.message?.trim() || "",
+					text: data.content?.trim() || "",
 					image: data.image || null,
 					timestamp: data.timestamp || new Date().toISOString(),
 					type: data.from === username ? "sent" : "received",
@@ -76,7 +76,7 @@ export default function useWebSocket(username, receiver, userMap) {
 		};
 
 		ws.onclose = () => {
-			console.warn("❌ WebSocket closed. Reconnecting in 2s...");
+			console.warn("WebSocket closed. Reconnecting in 2s...");
 			setTimeout(() => {
 				if (username && receiver && !wsRef.current) {
 					wsRef.current = new WebSocket(wsUrl);
@@ -93,8 +93,9 @@ export default function useWebSocket(username, receiver, userMap) {
 	// Send message
 	const sendMessage = async (text = "", image = null) => {
 		const payload = {
+			from: username,
 			receiver,
-			message: text || " ",
+			content: text || " ",
 			image: image || null,
 		};
 
@@ -118,27 +119,64 @@ export default function useWebSocket(username, receiver, userMap) {
 
 	// Delete chat
 	const deleteChat = async () => {
-    if (!username || !receiver) return;
-  
-    try {
-      const res = await fetch(
-        `https://${BASE_URL}/chat/delete/${username}/${receiver}/`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-  
-      if (!res.ok) throw new Error("Failed to delete chat");
-  
-      console.log("✅ Chat deleted successfully");
-      setMessages([]); // clear chat only for the user who deleted
-    } catch (err) {
-      console.error("❌ Error deleting chat:", err);
-    }
-  };
+		if (!username || !receiver) return;
 
-	return { messages, sendMessage, deleteChat };
+		try {
+			const res = await fetch(
+				`https://${BASE_URL}/chat/delete/${username}/${receiver}/`,
+				{
+					method: "DELETE",
+					headers: {
+						"Content-Type": "application/json",
+					},
+				}
+			);
+
+			if (!res.ok) throw new Error("Failed to delete chat");
+
+			console.log("Chat deleted successfully");
+			setMessages([]); // clear chat only for the user who deleted
+		} catch (err) {
+			console.error("Error deleting chat:", err);
+		}
+	};
+
+	// Block user
+	const blockUser = async () => {
+		if (!username || !receiver) return;
+
+		try {
+			const res = await fetch(`https://${BASE_URL}/block-user/`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ blocker: username, blocked: receiver }),
+			});
+
+			if (!res.ok) throw new Error("Failed to block user");
+
+			console.log(`${receiver} has been blocked by ${username}`);
+		} catch (err) {
+			console.error("Error blocking user:", err);
+		}
+	};
+
+	//unblock user
+	const unblockUser = async () => {
+		if (!username || !receiver) return;
+
+		try {
+			const res = await fetch(`https://${BASE_URL}/unblock-user/`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ blocker: username, blocked: receiver }),
+			});
+			if (!res.ok) throw new Error("Failed to unblock user");
+
+			console.log(`${receiver} has been unblocked by ${username}`);
+		} catch (err) {
+			console.error("Error unblocking user:", err);
+		}
+	};
+
+	return { messages, sendMessage, deleteChat, blockUser, unblockUser };
 }

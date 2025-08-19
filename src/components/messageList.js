@@ -1,39 +1,48 @@
-import React from "react";
-import { Box, Paper, Typography } from "@mui/material";
+import { List, Typography, Box } from "@mui/material";
+import MessageItem from "./messageItem";
 
-export default function MessageList({ messages, darkMode }) {
-  return (
-    <Box sx={{ flexGrow: 1, p: 2, overflowY: "auto" }}>
-      {messages.map((msg) => (
-        <Box
-          key={msg.id}
-          sx={{
-            display: "flex",
-            justifyContent: msg.fromMe ? "flex-end" : "flex-start",
-            mb: 2,
-          }}
+export default function MessageList({ messages }) {
+  if (!messages || messages.length === 0) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100%",
+        }}
+      >
+        <Typography
+          color="text.secondary"
+          variant="body2"
+          sx={{ opacity: 0.7, fontStyle: "italic" }}
         >
-          <Paper
-            sx={{
-              p: 1.5,
-              maxWidth: "70%",
-              bgcolor: msg.fromMe
-                ? darkMode
-                  ? "primary.dark"
-                  : "primary.light"
-                : darkMode
-                ? "grey.800"
-                : "grey.300",
-              color: msg.fromMe ? "white" : "inherit",
-            }}
-          >
-            <Typography variant="body2">{msg.text}</Typography>
-            <Typography variant="caption" sx={{ display: "block", textAlign: "right", mt: 0.5 }}>
-              {msg.time}
-            </Typography>
-          </Paper>
-        </Box>
+          No messages yet
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <List
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 1.5,
+        px: 0,
+        py: 0,
+        overflowY: "auto",
+        scrollbarWidth: "thin",
+        "&::-webkit-scrollbar": { width: 6 },
+        "&::-webkit-scrollbar-thumb": {
+          backgroundColor: "rgba(0,0,0,0.2)",
+          borderRadius: 3,
+        },
+      }}
+    >
+      {messages.map((msg, index) => (
+        <MessageItem key={index} msg={msg} />
       ))}
-    </Box>
+    </List>
   );
 }

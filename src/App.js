@@ -1,271 +1,141 @@
-import React, { useState } from "react";
-import {
-	AppBar,
-	Toolbar,
-	Typography,
-	CssBaseline,
-	Box,
-	TextField,
-	Button,
-	List,
-	ListItem,
-	IconButton,
-} from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import React, { useState, useEffect } from "react";
+import { Box, CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import useWebSocket from "./hooks/websocket";
+import Header from "./components/header";
+import Sidebar from "./components/sidebar";
 import ChatHeader from "./components/chatHeader";
+import MessageList from "./components/messageList";
+import ImagePreview from "./components/imagePreview";
+import MessageInput from "./components/messageInput";
 
 const drawerWidth = 250;
 const headerHeight = 64;
 
 export default function App() {
-	const [username] = useState("Yashal"); // Current device username
+	const [username] = useState("Yashal");
 	const [receiver, setReceiver] = useState("Sidra");
 	const [input, setInput] = useState("");
-	const [image, setImage] = useState(null); // store base64 image
+	const [image, setImage] = useState(null);
+	const [darkMode, setDarkMode] = useState(false);
 
-	// Map numeric IDs from backend to usernames
-	const userMap = {
-		4: "Yashal",
-		5: "Sidra",
-	};
+	const [isBlocked, setIsBlocked] = useState(false); // new
 
-	const { messages, sendMessage, deleteChat } = useWebSocket(username, receiver, userMap);
+	const userMap = { 4: "Yashal", 5: "Sidra" };
+	const users = Object.values(userMap);
 
+	const { messages, sendMessage, deleteChat, blockUser, unblockUser } = useWebSocket(
+		username,
+		receiver,
+		userMap
+	);
 
-	// handle sending message
 	const handleSend = () => {
 		if (!input.trim() && !image) return;
-
 		sendMessage(input.trim(), image);
-
 		setInput("");
 		setImage(null);
 	};
 
-	// handle file upload
 	const handleFileUpload = (e) => {
 		const file = e.target.files[0];
 		if (!file) return;
-
 		const reader = new FileReader();
-		reader.onloadend = () => {
-			setImage(reader.result); // base64 string
-		};
+		reader.onloadend = () => setImage(reader.result);
 		reader.readAsDataURL(file);
 	};
 
+	// Wrap block/unblock to also update state
+	const handleBlockUser = async () => {
+		await blockUser();
+		setIsBlocked(true);
+	};
+
+	const handleUnblockUser = async () => {
+		await unblockUser();
+		setIsBlocked(false);
+	};
+
+	const theme = createTheme({
+		palette: { mode: darkMode ? "dark" : "light" },
+	});
+
 	return (
-		<Box sx={{ display: "flex", height: "100vh" }}>
-			<CssBaseline />
+		<ThemeProvider theme={theme}>
+			<Box sx={{ display: "flex", height: "100vh" }}>
+				<CssBaseline />
+				<Header username={username} darkMode={darkMode} setDarkMode={setDarkMode} />
 
-			{/* HEADER */}
-			<AppBar position="fixed" sx={{ zIndex: 1300 }}>
-				<Toolbar>
-					<Typography variant="h6">Chat App - {username}</Typography>
-				</Toolbar>
-			</AppBar>
+				<Sidebar
+					users={users}
+					receiver={receiver}
+					setReceiver={setReceiver}
+					drawerWidth={drawerWidth}
+					headerHeight={headerHeight}
+					darkMode={darkMode}
+				/>
 
-			{/* SIDEBAR */}
-			<Box
-				sx={{
-					width: drawerWidth,
-					borderRight: "1px solid #ccc",
-					mt: `${headerHeight}px`,
-					p: 2,
-					bgcolor: "#f0f0f0",
-				}}
-			>
-				<Typography variant="h6">Online Users</Typography>
-				{[{ name: "Sidra" }].map((user) => (
-					<Box
-						key={user.name}
-						sx={{
-							display: "flex",
-							alignItems: "center",
-							p: 1,
-							cursor: "pointer",
-							bgcolor: receiver === user.name ? "primary.light" : "transparent",
-							borderRadius: 1,
-							mb: 1,
-						}}
-						onClick={() => setReceiver(user.name)}
-					>
-						<Typography>{user.name}</Typography>
-					</Box>
-				))}
-			</Box>
-
-			{/* MAIN CHAT AREA */}
-			<Box
-				sx={{
-					flexGrow: 1,
-					display: "flex",
-					flexDirection: "column",
-					mt: `${headerHeight}px`,
-					p: 3,
-				}}
-			>
-				{/* Chat Header */}
-				<ChatHeader receiver={receiver} onClearChat={deleteChat} />
-
-				{/* Messages */}
 				<Box
 					sx={{
 						flexGrow: 1,
-						overflowY: "auto",
-						border: "1px solid #ccc",
-						borderRadius: 1,
-						p: 2,
-						mb: 2,
-						bgcolor: "#fafafa",
+						display: "flex",
+						flexDirection: "column",
+						mt: `${headerHeight}px`,
+						p: 3,
 					}}
 				>
-					{messages.length === 0 ? (
-						<Typography color="text.secondary" align="center" sx={{ mt: 5 }}>
-							No messages yet
-						</Typography>
-					) : (
-						<List>
-							{messages.map((msg, index) => {
-								// Normalize message text (in case backend sends objects)
-								const text =
-									typeof msg.message === "string"
-										? msg.message
-										: msg.message?.text || "";
+					<ChatHeader
+						receiver={receiver}
+						onClearChat={deleteChat}
+						onBlockUser={handleBlockUser}
+						onUnblockUser={handleUnblockUser}
+						isBlocked={isBlocked}   
+						darkMode={darkMode}
+					/>
 
-								return (
-									<ListItem
-										key={index}
-										sx={{
-											display: "flex",
-											justifyContent:
-												msg.type === "sent" ? "flex-end" : "flex-start",
-										}}
-									>
-										<Box
-											sx={{
-												bgcolor:
-													msg.type === "sent" ? "primary.main" : "grey.300",
-												color:
-													msg.type === "sent"
-														? "primary.contrastText"
-														: "text.primary",
-												px: 2,
-												py: 1,
-												borderRadius: 2,
-												maxWidth: "70%",
-												wordBreak: "break-word",
-											}}
-										>
-											{/* Sender */}
-											<Typography
-												variant="body2"
-												fontWeight="bold"
-												sx={{ mb: 0.3 }}
-											>
-												{msg.sender}:
-											</Typography>
-											{/* Show text */}
-											{msg.text && (
-												<Typography variant="body2">{msg.text}</Typography>
-											)}
-
-											{/* Image */}
-											{msg.image && typeof msg.image === "string" && (
-												<Box sx={{ mt: 1 }}>
-													<img
-														src={msg.image}
-														alt="uploaded"
-														style={{
-															maxWidth: "200px",
-															maxHeight: "200px",
-															borderRadius: "8px",
-														}}
-													/>
-												</Box>
-											)}
-
-											{/* Timestamp */}
-											{msg.timestamp && (
-												<Typography
-													variant="caption"
-													sx={{
-														display: "block",
-														textAlign: msg.type === "sent" ? "right" : "left",
-														mt: 0.5,
-														color: msg.type === "sent" ? "#dcefff" : "#555",
-													}}
-												>
-													{new Date(msg.timestamp).toLocaleTimeString([], {
-														hour: "2-digit",
-														minute: "2-digit",
-													})}
-												</Typography>
-											)}
-										</Box>
-									</ListItem>
-								);
-							})}
-						</List>
-					)}
-				</Box>
-
-				{/* Image Preview*/}
-				{image && (
 					<Box
 						sx={{
-							display: "flex",
-							alignItems: "center",
-							mb: 1,
-							p: 1,
-							border: "1px solid #ccc",
+							flexGrow: 1,
+							overflowY: "auto",
 							borderRadius: 2,
-							bgcolor: "#fff",
+							p: 2,
+							mb: 2,
+							position: "relative",
+							background: darkMode
+								? "linear-gradient(135deg, #1a1a1a, #222, #2a2a2a, #1a1a1a)"
+								: "linear-gradient(135deg, #f0f0f0, #e6e6e6, #f9f9f9, #f0f0f0)",
+							backgroundSize: "400% 400%",
+							animation: "gradientAnimation 15s ease infinite",
+							boxShadow: darkMode
+								? "inset 0 0 20px rgba(0,0,0,0.6)"
+								: "inset 0 0 20px rgba(0,0,0,0.1)",
+							"&::before": {
+								content: '""',
+								position: "absolute",
+								top: 0,
+								left: 0,
+								width: "100%",
+								height: "100%",
+								backgroundImage:
+									'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.05)" /></svg>\')',
+								pointerEvents: "none",
+								borderRadius: "inherit",
+							},
 						}}
 					>
-						<img
-							src={image}
-							alt="preview"
-							style={{
-								maxWidth: "100px",
-								maxHeight: "100px",
-								borderRadius: "8px",
-								marginRight: "8px",
-							}}
-						/>
-						<IconButton onClick={() => setImage(null)} size="small">
-							<CloseIcon />
-						</IconButton>
+						<MessageList messages={messages} />
 					</Box>
-				)}
 
-				{/* Input + Upload */}
-				<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-					<TextField
-						fullWidth
-						placeholder={`Message to ${receiver}`}
-						value={input}
-						onChange={(e) => setInput(e.target.value)}
-						onKeyDown={(e) => e.key === "Enter" && handleSend()}
+					<ImagePreview image={image} setImage={setImage} />
+					<MessageInput
+						input={input}
+						setInput={setInput}
+						handleSend={handleSend}
+						handleFileUpload={handleFileUpload}
+						receiver={receiver}
+						darkMode={darkMode}
 					/>
-					<input
-						type="file"
-						accept="image/*"
-						style={{ display: "none" }}
-						id="upload-image"
-						onChange={handleFileUpload}
-					/>
-					<label htmlFor="upload-image">
-						<Button variant="outlined" component="span">
-							Upload
-						</Button>
-					</label>
-					<Button variant="contained" onClick={handleSend}>
-						Send
-					</Button>
 				</Box>
 			</Box>
-		</Box>
+		</ThemeProvider>
 	);
 }
