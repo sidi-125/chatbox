@@ -12,26 +12,23 @@ const drawerWidth = 250;
 const headerHeight = 64;
 
 export default function App() {
-	const [username] = useState("Yashal");
-	const [receiver, setReceiver] = useState("Sidra");
+	const [username] = useState("Sidra");
+	const [receiver, setReceiver] = useState("Sana");
 	const [input, setInput] = useState("");
 	const [image, setImage] = useState(null);
 	const [darkMode, setDarkMode] = useState(false);
 
 	const [isBlocked, setIsBlocked] = useState(false); // new
 
-	const userMap = { 4: "Yashal", 5: "Sidra" };
+	const userMap = { 18: "Sana", 17: "Sidra" };
 	const users = Object.values(userMap);
 
-	const { messages, sendMessage, deleteChat, blockUser, unblockUser } = useWebSocket(
-		username,
-		receiver,
-		userMap
-	);
+	const { messages, sendMessage, deleteChat, blockUser, unblockUser } =
+		useWebSocket(username, receiver, userMap);
 
 	const handleSend = () => {
 		if (!input.trim() && !image) return;
-		sendMessage(input.trim(), image);
+		sendMessage(input.trim(), image); // pass only string + image
 		setInput("");
 		setImage(null);
 	};
@@ -63,7 +60,11 @@ export default function App() {
 		<ThemeProvider theme={theme}>
 			<Box sx={{ display: "flex", height: "100vh" }}>
 				<CssBaseline />
-				<Header username={username} darkMode={darkMode} setDarkMode={setDarkMode} />
+				<Header
+					username={username}
+					darkMode={darkMode}
+					setDarkMode={setDarkMode}
+				/>
 
 				<Sidebar
 					users={users}
@@ -88,7 +89,7 @@ export default function App() {
 						onClearChat={deleteChat}
 						onBlockUser={handleBlockUser}
 						onUnblockUser={handleUnblockUser}
-						isBlocked={isBlocked}   
+						isBlocked={isBlocked}
 						darkMode={darkMode}
 					/>
 
@@ -133,6 +134,7 @@ export default function App() {
 						handleFileUpload={handleFileUpload}
 						receiver={receiver}
 						darkMode={darkMode}
+						isBlocked={isBlocked} // <-- pass the state
 					/>
 				</Box>
 			</Box>

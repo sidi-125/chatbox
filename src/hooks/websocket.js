@@ -12,7 +12,7 @@ export default function useWebSocket(username, receiver, userMap) {
 		if (!username || !receiver) return;
 		try {
 			const res = await fetch(
-				`https://${BASE_URL}/chat/${username}/${receiver}/`,
+				`https://${BASE_URL}/history/${username}/${receiver}/`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -44,7 +44,7 @@ export default function useWebSocket(username, receiver, userMap) {
 	useEffect(() => {
 		if (!username || !receiver) return;
 
-		const wsUrl = `wss://${BASE_URL}/ws/chat/${username}/`;
+		const wsUrl =`wss://${BASE_URL}/ws/chat/${username}/`;
 		const ws = new WebSocket(wsUrl);
 		wsRef.current = ws;
 
@@ -56,24 +56,22 @@ export default function useWebSocket(username, receiver, userMap) {
 			fetchHistory(); // only once on connect
 		};
 
-		ws.onmessage = (event) => {
-			try {
-				const data = JSON.parse(event.data);
-				console.log("WS received:", data);
+ws.onmessage = (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        const incomingMessage = {
+            sender: data.sender || data.from || "Unknown",
+            text: data.message?.trim() || "",  // <-- use `message` here
+            image: data.image || null,
+            timestamp: data.timestamp || new Date().toISOString(),
+            type: data.sender === username ? "sent" : "received",
+        };
+        setMessages((prev) => [...prev, incomingMessage]);
+    } catch (err) {
+        console.error("Error parsing WS message", err);
+    }
+};
 
-				const incomingMessage = {
-					sender: data.from || "Unknown",
-					text: data.content?.trim() || "",
-					image: data.image || null,
-					timestamp: data.timestamp || new Date().toISOString(),
-					type: data.from === username ? "sent" : "received",
-				};
-
-				setMessages((prev) => [...prev, incomingMessage]);
-			} catch (err) {
-				console.error("Error parsing WS message", err);
-			}
-		};
 
 		ws.onclose = () => {
 			console.warn("WebSocket closed. Reconnecting in 2s...");
@@ -92,30 +90,30 @@ export default function useWebSocket(username, receiver, userMap) {
 
 	// Send message
 	const sendMessage = async (text = "", image = null) => {
-		const payload = {
-			from: username,
-			receiver,
-			content: text || " ",
-			image: image || null,
-		};
+    const payload = {
+        receiver,
+        message: text || " ",
+        image: image || null,
+    };
 
-		setMessages((prev) => [
-			...prev,
-			{
-				sender: username,
-				text: text || "",
-				image,
-				timestamp: new Date().toISOString(),
-				type: "sent",
-			},
-		]);
+    setMessages((prev) => [
+        ...prev,
+        {
+            sender: username,
+            text: text || "",
+            image,
+            timestamp: new Date().toISOString(),
+            type: "sent",
+        },
+    ]);
 
-		if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-			wsRef.current.send(JSON.stringify(payload));
-		} else {
-			messageQueue.current.push(payload);
-		}
-	};
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify(payload));
+    } else {
+        messageQueue.current.push(payload);
+    }
+};
+
 
 	// Delete chat
 	const deleteChat = async () => {
@@ -178,5 +176,5 @@ export default function useWebSocket(username, receiver, userMap) {
 		}
 	};
 
-	return { messages, sendMessage, deleteChat, blockUser, unblockUser };
+	return { messages, sendMessage, deleteChat, blockUser, unblockUser };
 }
