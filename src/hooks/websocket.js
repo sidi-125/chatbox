@@ -12,7 +12,7 @@ export default function useWebSocket(username, receiver, userMap) {
 		if (!username || !receiver) return;
 		try {
 			const res = await fetch(
-				`https://${BASE_URL}/chat/${username}/${receiver}/`,
+				`https://${BASE_URL}/history/${username}/${receiver}/`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -23,16 +23,15 @@ export default function useWebSocket(username, receiver, userMap) {
 
 			const data = await res.json();
 			const filteredMessages = data.map((msg) => {
-				const senderName = userMap[msg.sender] || "unknown";
-				const type = senderName === username ? "sent" : "received";
 				return {
-					sender: senderName,
+					sender: userMap[msg.sender] || msg.sender, // display name for UI
 					text: msg.content || "",
 					image: msg.image || null,
 					timestamp: msg.timestamp,
-					type,
+					type: msg.sender === username ? "sent" : "received", // <-- FIXED
 				};
 			});
+			
 
 			setMessages(filteredMessages);
 		} catch (err) {
@@ -59,16 +58,13 @@ export default function useWebSocket(username, receiver, userMap) {
 		ws.onmessage = (event) => {
 			try {
 				const data = JSON.parse(event.data);
-				console.log("WS received:", data);
-
 				const incomingMessage = {
-					sender: data.from || "Unknown",
-					text: data.content?.trim() || "",
+					sender: data.sender || data.from || "Unknown",
+					text: data.message?.trim() || "", // <-- use message here
 					image: data.image || null,
 					timestamp: data.timestamp || new Date().toISOString(),
-					type: data.from === username ? "sent" : "received",
+					type: data.sender === username ? "sent" : "received",
 				};
-
 				setMessages((prev) => [...prev, incomingMessage]);
 			} catch (err) {
 				console.error("Error parsing WS message", err);
@@ -93,9 +89,8 @@ export default function useWebSocket(username, receiver, userMap) {
 	// Send message
 	const sendMessage = async (text = "", image = null) => {
 		const payload = {
-			from: username,
 			receiver,
-			content: text || " ",
+			message: text || " ",
 			image: image || null,
 		};
 

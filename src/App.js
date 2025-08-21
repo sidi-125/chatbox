@@ -12,15 +12,15 @@ const drawerWidth = 250;
 const headerHeight = 64;
 
 export default function App() {
-	const [username] = useState("Yashal");
-	const [receiver, setReceiver] = useState("Sidra");
+	const [username] = useState("Sidra"); // hardcoded for simplicity
+	const [receiver, setReceiver] = useState("Sana");
 	const [input, setInput] = useState("");
 	const [image, setImage] = useState(null);
 	const [darkMode, setDarkMode] = useState(false);
 
 	const [isBlocked, setIsBlocked] = useState(false); // new
 
-	const userMap = { 4: "Yashal", 5: "Sidra" };
+	const userMap = { 18: "Sana", 17: "Sidra" };
 	const users = Object.values(userMap);
 
 	const { messages, sendMessage, deleteChat, blockUser, unblockUser } = useWebSocket(
@@ -30,11 +30,12 @@ export default function App() {
 	);
 
 	const handleSend = () => {
-		if (!input.trim() && !image) return;
-		sendMessage(input.trim(), image);
-		setInput("");
-		setImage(null);
-	};
+  if (!input.trim() && !image) return;
+  sendMessage(input.trim(), image); // pass only string + image
+  setInput("");
+  setImage(null);
+};
+
 
 	const handleFileUpload = (e) => {
 		const file = e.target.files[0];
