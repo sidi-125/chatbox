@@ -23,16 +23,15 @@ export default function useWebSocket(username, receiver, userMap) {
 
 			const data = await res.json();
 			const filteredMessages = data.map((msg) => {
-				const senderName = userMap[msg.sender] || "unknown";
-				const type = senderName === username ? "sent" : "received";
 				return {
-					sender: senderName,
+					sender: userMap[msg.sender] || msg.sender, // display name for UI
 					text: msg.content || "",
 					image: msg.image || null,
 					timestamp: msg.timestamp,
-					type,
+					type: msg.sender === username ? "sent" : "received", // <-- FIXED
 				};
 			});
+			
 
 			setMessages(filteredMessages);
 		} catch (err) {
@@ -71,7 +70,6 @@ ws.onmessage = (event) => {
         console.error("Error parsing WS message", err);
     }
 };
-
 
 		ws.onclose = () => {
 			console.warn("WebSocket closed. Reconnecting in 2s...");
@@ -113,6 +111,7 @@ ws.onmessage = (event) => {
         messageQueue.current.push(payload);
     }
 };
+
 
 
 	// Delete chat

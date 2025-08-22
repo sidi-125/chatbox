@@ -12,7 +12,7 @@ const drawerWidth = 250;
 const headerHeight = 64;
 
 export default function App() {
-	const [username] = useState("Sidra");
+	const [username] = useState("Sidra"); 
 	const [receiver, setReceiver] = useState("Sana");
 	const [input, setInput] = useState("");
 	const [image, setImage] = useState(null);
@@ -27,6 +27,12 @@ export default function App() {
 		useWebSocket(username, receiver, userMap);
 
 	const handleSend = () => {
+  if (!input.trim() && !image) return;
+  sendMessage(input.trim(), image); // pass only string + image
+  setInput("");
+  setImage(null);
+};
+
 		if (!input.trim() && !image) return;
 		sendMessage(input.trim(), image); // pass only string + image
 		setInput("");
