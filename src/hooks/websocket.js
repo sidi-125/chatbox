@@ -61,7 +61,7 @@ export default function useWebSocket(username, receiver, userMap) {
 	useEffect(() => {
 		if (!username || !receiver) return;
 
-		const wsUrl = `wss://${BASE_URL}/ws/chat/${username}/`;
+		const wsUrl =`wss://${BASE_URL}/ws/chat/${username}/`;
 		const ws = new WebSocket(wsUrl);
 		wsRef.current = ws;
 
@@ -72,6 +72,7 @@ export default function useWebSocket(username, receiver, userMap) {
 			messageQueue.current = [];
 			fetchHistory();
 		};
+
 
 		ws.onmessage = (event) => {
 			try {
@@ -162,6 +163,7 @@ export default function useWebSocket(username, receiver, userMap) {
 		fetchHistory();
 	};
 
+
 	// Delete chat
 	const deleteChat = async () => {
 		if (!username || !receiver) return;
@@ -223,5 +225,5 @@ export default function useWebSocket(username, receiver, userMap) {
 		}
 	};
 
-	return { messages, sendMessage, deleteChat, blockUser, unblockUser };
+	return { messages, sendMessage, deleteChat, blockUser, unblockUser };
 }

@@ -137,6 +137,7 @@ export default function App() {
 						handleFileUpload={handleFileUpload}
 						receiver={receiver}
 						darkMode={darkMode}
+						isBlocked={isBlocked} // <-- pass the state
 					/>
 				</Box>
 			</Box>
