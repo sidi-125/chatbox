@@ -8,8 +8,12 @@ export default function useWebSocket(url) {
     ws.current = new WebSocket(url);
 
     ws.current.onmessage = (event) => {
+      try{
       const data = JSON.parse(event.data);
       setMessages((prev) => [...prev, data]);
+      } catch (err) {
+        console.error("Invalid JSON from server:", event.data);
+      }
     };
 
     return () => ws.current.close();

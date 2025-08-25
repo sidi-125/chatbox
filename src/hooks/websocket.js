@@ -7,6 +7,20 @@ export default function useWebSocket(username, receiver, userMap) {
 
 	const BASE_URL = process.env.REACT_APP_WS_BASE_URL;
 
+	// Helper to convert disappear_option string to milliseconds
+	function parseDisappearOption(option) {
+		switch (option) {
+			case "1min": // 1 minute
+				return 60 * 1000;
+			case "24h": // 24 hours
+				return 24 * 60 * 60 * 1000;
+			case "7d": // 7 days
+				return 7 * 24 * 60 * 60 * 1000;
+			default:
+				return 0; // "off"
+		}
+	}
+
 	// Fetch latest chat history
 	const fetchHistory = useCallback(async () => {
 		if (!username || !receiver) return;
@@ -25,15 +39,19 @@ export default function useWebSocket(username, receiver, userMap) {
 			const filteredMessages = data.map((msg) => {
 				return {
 					sender: userMap[msg.sender] || msg.sender, // display name for UI
-					text: msg.content || "",
+					text: msg.content || msg.message || "",
 					image: msg.image || null,
 					timestamp: msg.timestamp,
 					type: msg.sender === username ? "sent" : "received", // <-- FIXED
 				};
 			});
-			
-
-			setMessages(filteredMessages);
+			setMessages((prev) => {
+				const existingKeys = new Set(prev.map((m) => m.sender + m.timestamp));
+				const newMsgs = filteredMessages.filter(
+					(m) => !existingKeys.has(m.sender + m.timestamp)
+				);
+				return [...prev, ...newMsgs];
+			});
 		} catch (err) {
 			console.error("Error fetching history:", err);
 		}
@@ -52,24 +70,44 @@ export default function useWebSocket(username, receiver, userMap) {
 			// flush queued messages
 			messageQueue.current.forEach((msg) => ws.send(JSON.stringify(msg)));
 			messageQueue.current = [];
-			fetchHistory(); // only once on connect
+			fetchHistory();
 		};
 
-ws.onmessage = (event) => {
-    try {
-        const data = JSON.parse(event.data);
-        const incomingMessage = {
-            sender: data.sender || data.from || "Unknown",
-            text: data.message?.trim() || "",  // <-- use `message` here
-            image: data.image || null,
-            timestamp: data.timestamp || new Date().toISOString(),
-            type: data.sender === username ? "sent" : "received",
-        };
-        setMessages((prev) => [...prev, incomingMessage]);
-    } catch (err) {
-        console.error("Error parsing WS message", err);
-    }
-};
+
+		ws.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				const incomingMessage = {
+					sender: data.sender || data.from || "Unknown",
+					text: data.message?.trim() || "", // <-- use message here
+					image: data.image || null,
+					timestamp: data.timestamp || new Date().toISOString(),
+					type: data.sender === username ? "sent" : "received",
+					disappearOption: data.disappear_option || null,
+				};
+				setMessages((prev) => [...prev, incomingMessage]);
+
+				if (incomingMessage.disappearOption) {
+					const durationMs = parseDisappearOption(
+						incomingMessage.disappearOption
+					);
+					setTimeout(() => {
+						setMessages((prev) =>
+							prev.filter(
+								(m) =>
+									!(
+										m.sender === incomingMessage.sender &&
+										m.timestamp === incomingMessage.timestamp
+									)
+							)
+						);
+					}, durationMs);
+				}
+				fetchHistory(); // merge safely
+			} catch (err) {
+				console.error("Error parsing WS message", err);
+			}
+		};
 
 		ws.onclose = () => {
 			console.warn("WebSocket closed. Reconnecting in 2s...");
@@ -87,31 +125,43 @@ ws.onmessage = (event) => {
 	}, [username, receiver]);
 
 	// Send message
-	const sendMessage = async (text = "", image = null) => {
-    const payload = {
-        receiver,
-        message: text || " ",
-        image: image || null,
-    };
+	const sendMessage = async (
+		text = "",
+		image = null,
+		disappearOption = null
+	) => {
+		const payload = {
+			receiver,
+			message: text || " ",
+			image: image || null,
+		};
 
-    setMessages((prev) => [
-        ...prev,
-        {
-            sender: username,
-            text: text || "",
-            image,
-            timestamp: new Date().toISOString(),
-            type: "sent",
-        },
-    ]);
+		console.log("WS payload:", JSON.stringify(payload));
 
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(payload));
-    } else {
-        messageQueue.current.push(payload);
-    }
-};
+		if (disappearOption) {
+			payload.disappear_option = disappearOption; // add disappearing option
+			console.log("⏳ Sending disappearing message:", payload);
+		}
 
+		setMessages((prev) => [
+			...prev,
+			{
+				sender: username,
+				text: text || "",
+				image,
+				timestamp: new Date().toISOString(),
+				type: "sent",
+				disappearOption: disappearOption || null,
+			},
+		]);
+
+		if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+			wsRef.current.send(JSON.stringify(payload));
+		} else {
+			messageQueue.current.push(payload);
+		}
+		fetchHistory();
+	};
 
 
 	// Delete chat
