@@ -6,6 +6,7 @@ from .models import Message, Block
 class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
+        message = serializers.CharField(source='content')
         fields = ["sender", "receiver", "content", "timestamp", "sent_during_block"]
 
 

@@ -14,7 +14,15 @@ class MyUserAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ("sender", "receiver", "content", "timestamp")
+    list_display = (
+        "sender",
+        "receiver",
+        "content",
+        "timestamp",
+        "disappear_option",
+        "disappear_at",
+        "is_deleted",
+    )
     search_fields = ("sender__username", "receiver__username", "content")
     list_filter = ("timestamp",)
     ordering = ("-timestamp",)

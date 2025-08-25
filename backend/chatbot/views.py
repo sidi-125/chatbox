@@ -6,8 +6,8 @@ from django.utils import timezone
 from .models import Message, MyUser, Block
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
-User = get_user_model()
 
+User = get_user_model()
 
 # chat history view
 @api_view(["Post"])
@@ -31,20 +31,36 @@ def chat_history(request, username1, username2):
         viewer_is_blocker = True
 
     visible_msgs = []
+    now = timezone.now()
     for msg in messages:
-        if msg.sent_during_block:   
+        if msg.sent_during_block:
             continue
+        # if msg.disappear_at:
+        #     if msg.disappear_at <= now:
+        #         if not msg.is_deleted:
+        #             msg.is_deleted = True
+        #             msg.save()
+        if msg.disappear_at and msg.disappear_at <= now and not msg.is_deleted:
+            msg.is_deleted = True
+            msg.save()
+            print(msg.id)
 
-        visible_msgs.append(
-            {
-                "id": msg.id,
-                "sender": msg.sender.username,
-                "receiver": msg.receiver.username,
-                "content": msg.content,
-                "timestamp": msg.timestamp,
-                "send_during_block": msg.sent_during_block,
-            }
-        )
+        # return msg
+        if not msg.is_deleted:
+            visible_msgs.append(
+                {
+                    "id": msg.id,
+                    "sender": msg.sender.username,
+                    "receiver": msg.receiver.username,
+                    "message": msg.content,                      # <-- rename to message
+                    "timestamp": msg.timestamp.isoformat(),  # <-- format timestamp as ISO string
+                    "send_during_block": msg.sent_during_block,
+                    "disappear_option": msg.disappear_option,
+                    "time_remaining": msg.time_remaining(),
+                    "is_deleted": msg.is_deleted,
+                    "disappear_at": msg.disappear_at,
+                }
+            )
 
     return Response(visible_msgs, status=status.HTTP_200_OK)
 
@@ -62,6 +78,8 @@ def delete_chat(request, username1, username2):
         {"message": f"{deleted_count} messages deleted successfully."},
         status=status.HTTP_200_OK,
     )
+
+
 # block user view
 class BlockUserView(APIView):
     def post(self, request):
@@ -84,6 +102,8 @@ class BlockUserView(APIView):
         return Response(
             {"message": f"{blocked_username} blocked by {blocker_username}"}, status=201
         )
+
+
 # unblock user view
 class UnblockUserView(APIView):
     def post(self, request):

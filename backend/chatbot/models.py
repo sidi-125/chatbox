@@ -9,6 +9,7 @@ from django.utils import timezone
 
 User = settings.AUTH_USER_MODEL
 
+
 class MyUserManager(BaseUserManager):
     def create_user(self, username, password=None):
         if not username:
@@ -55,6 +56,45 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     sent_during_block = models.BooleanField(default=False)
+    disappear_option = models.CharField(
+        max_length=10,
+        choices=[
+            ("off", "Off"),
+            ("24h", "24 Hours"),
+            ("7d", "7 Days"),
+            ("1minute", "1 Minute"),
+        ],
+        default="off",
+    )
+    disappear_at = models.DateTimeField(blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        now = timezone.now()
+        if self.disappear_option == "24h":
+            self.disappear_at = timezone.now() + timezone.timedelta(hours=24)
+        elif self.disappear_option == "7d":
+            self.disappear_at = timezone.now() + timezone.timedelta(days=7)
+        elif self.disappear_option == "1min":
+            self.disappear_at = timezone.now() + timezone.timedelta(minutes=1)
+        else:
+            self.disappear_at = None
+        super().save(*args, **kwargs)
+
+    def has_disappeared(self):
+        return self.disappear_at and timezone.now() > self.disappear_at
+
+    def time_remaining(self):
+        if not self.disappear_at:
+            return None
+        remaining = self.disappear_at - timezone.now()
+        return max(0, int(remaining.total_seconds()))
+
+    def __str__(self):
+        return f"{self.sender} to {self.receiver}"
+
+    def __str__(self):
+        return f"{self.sender} to {self.receiver}"
 
     def __str__(self):
         return f"{self.sender} to {self.receiver}"
