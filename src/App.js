@@ -12,7 +12,7 @@ const drawerWidth = 250;
 const headerHeight = 64;
 
 export default function App() {
-	const [username] = useState("Sana"); // hardcoded for simplicity
+	const [username] = useState("Yashal"); // hardcoded for simplicity
 	const [receiver, setReceiver] = useState("Sidra");
 	const [input, setInput] = useState("");
 	const [image, setImage] = useState(null);
@@ -21,7 +21,7 @@ export default function App() {
 	const [isBlocked, setIsBlocked] = useState(false);
 	const [disappearOption, setDisappearOption] = useState("off"); // default off
 
-	const userMap = { 2: "Sana", 1: "Sidra" };
+	const userMap = { 10: "Yashal", 1: "Sidra" };
 	const users = Object.values(userMap);
 
 	const { messages, sendMessage, deleteChat, blockUser, unblockUser } =
