@@ -34,7 +34,7 @@ class MyUser(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(default=timezone.now)
-
+    disappearing_enabled = models.BooleanField(default=False)
     objects = MyUserManager()
 
     USERNAME_FIELD = "username"
@@ -53,7 +53,8 @@ class Message(models.Model):
         on_delete=models.CASCADE,
         related_name="received_messages",
     )
-    content = models.TextField()
+    encrypted_content = models.TextField(default="")
+    content = models.TextField(blank=True, null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     sent_during_block = models.BooleanField(default=False)
     disappear_option = models.CharField(
@@ -75,7 +76,7 @@ class Message(models.Model):
             self.disappear_at = timezone.now() + timezone.timedelta(hours=24)
         elif self.disappear_option == "7d":
             self.disappear_at = timezone.now() + timezone.timedelta(days=7)
-        elif self.disappear_option == "1min":
+        elif self.disappear_option == "1minute":
             self.disappear_at = timezone.now() + timezone.timedelta(minutes=1)
         else:
             self.disappear_at = None

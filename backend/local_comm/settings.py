@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-3y#7umcwl^=z&q^(-)ndlkb4c85^4b(d00saxw3fjodry70yb!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "c1cdc1ecb0db.ngrok-free.app"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "d113530bdc4f.ngrok-free.app"]
 
 
 # Application definition
@@ -43,9 +43,19 @@ INSTALLED_APPS = [
     "chatbot",  # Your app
     # Online users app
 ]
+# import os
 
+# ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY")
+# if not ENCRYPTION_KEY:
+#     raise RuntimeError("ENCRYPTION_KEY is missing. Set it in environment.")
+import environ
+
+env = environ.Env()
+environ.Env.read_env()  # reads from .env
+
+ENCRYPTION_KEY = env("ENCRYPTION_KEY")
 DEBUG = True
-# NGROK_BASE_URL = '7cdc9a46b52a.ngrok-free.app'
+# NGROK_BASE_URL = 'd113530bdc4f.ngrok-free.app '
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -117,6 +127,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
+
 
 LANGUAGE_CODE = "en-us"
 

@@ -6,7 +6,7 @@ from django.utils import timezone
 from .models import Message, MyUser, Block
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
-
+from .encryption_utils import decrypt_message
 User = get_user_model()
 
 # chat history view
@@ -35,11 +35,6 @@ def chat_history(request, username1, username2):
     for msg in messages:
         if msg.sent_during_block:
             continue
-        # if msg.disappear_at:
-        #     if msg.disappear_at <= now:
-        #         if not msg.is_deleted:
-        #             msg.is_deleted = True
-        #             msg.save()
         if msg.disappear_at and msg.disappear_at <= now and not msg.is_deleted:
             msg.is_deleted = True
             msg.save()
@@ -52,20 +47,64 @@ def chat_history(request, username1, username2):
                     "id": msg.id,
                     "sender": msg.sender.username,
                     "receiver": msg.receiver.username,
-                    "message": msg.content,                      # <-- rename to message
+                    # "message": msg.content,        
+                    "message": decrypt_message(msg.encrypted_content),
                     "timestamp": msg.timestamp.isoformat(),  # <-- format timestamp as ISO string
                     "send_during_block": msg.sent_during_block,
                     "disappear_option": msg.disappear_option,
                     "time_remaining": msg.time_remaining(),
                     "is_deleted": msg.is_deleted,
                     "disappear_at": msg.disappear_at,
+                    
                 }
             )
 
     return Response(visible_msgs, status=status.HTTP_200_OK)
 
+# @api_view(["POST"])
+# def toggle_disappearing(request, username):
+#     try:
+#         user = MyUser.objects.get(username=username)
+#     except MyUser.DoesNotExist:
+#         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-# delete chat view
+#     enabled = request.data.get("enabled", None)
+#     if enabled is None:
+#         return Response({"error": "enabled field is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+#     user.disappearing_enabled = bool(enabled)
+#     user.save()
+
+#     return Response({
+#         "username": user.username,
+#         "disappearing_enabled": user.disappearing_enabled,
+#     })
+@api_view(["POST"])
+def toggle_disappearing(request, username):
+    """
+    Endpoint to turn disappearing messages ON or OFF using username.
+    Example payload:
+    { "action": "on" } or { "action": "off" }
+    """
+    try:
+        user = MyUser.objects.get(username=username)
+    except MyUser.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    action = request.data.get("action", "").lower()
+
+    if action == "on":
+        user.disappearing_enabled = True
+    elif action == "off":
+        user.disappearing_enabled = False
+    else:
+        return Response({"error": "Invalid action, use 'on' or 'off'"}, status=400)
+
+    user.save()
+    return Response({
+        "username": user.username,
+        "disappearing_enabled": user.disappearing_enabled
+    })
 @api_view(["DELETE"])
 def delete_chat(request, username1, username2):
     messages = Message.objects.filter(

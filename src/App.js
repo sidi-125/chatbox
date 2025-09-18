@@ -12,8 +12,8 @@ const drawerWidth = 250;
 const headerHeight = 64;
 
 export default function App() {
-	const [username] = useState("Sana"); // hardcoded for simplicity
-	const [receiver, setReceiver] = useState("Sidra");
+	const [username] = useState("Sidra"); // hardcoded for simplicity
+	const [receiver, setReceiver] = useState("Sana");
 	const [input, setInput] = useState("");
 	const [image, setImage] = useState(null);
 	const [darkMode, setDarkMode] = useState(false);
