@@ -2,7 +2,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Message, MyUser, Block
-
+from .encryption_utils import encrypt_message
 connected_users = {}
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -35,7 +35,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "sender": self.username,
                     "message": message,
                     "sent_during_block":( msg_obj.sent_during_block if msg_obj else False),
-                    # "sent_during_block": sent_during_block,
                     "disappear_option": disappear_option,   
                 }
                 print("Sending to receiver:", receiver_response)
@@ -64,7 +63,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             receiver, _ = await database_sync_to_async(MyUser.objects.get_or_create)(
                 username=receiver_username
             )
-
+            if sender.disappearing_enabled:
+                final_option = disappear_option   # e.g., "24h"
+            else:
+                final_option = "off"
             # Check block status
             sender_blocked_receiver = await ChatConsumer.is_blocked(sender, receiver)
             receiver_blocked_sender = await ChatConsumer.is_blocked(receiver, sender)
@@ -80,9 +82,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 receiver=receiver,
                 content=message or "",
                 sent_during_block=sent_during_block,
-                disappear_option=disappear_option,
+                disappear_option=final_option, 
+                encrypted_content=encrypt_message(message or ""),# ✅ Only once
+                # disappear_at=disappear_at,
             )
-
             await database_sync_to_async(msg_obj.save)()
 
             return msg_obj,receiver_can_see,sent_during_block
@@ -90,4 +93,4 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             print(f"Unexpected error in save_message: {e}")
             # return None, True, False,False,False
-            return None, False
+            return None, False, False
